@@ -10,6 +10,7 @@ import UIKit
 
 public protocol DateTimePickerDelegate {
     func dateTimePicker(_ picker: DateTimePicker, didSelectDate: Date)
+    func dateTimePicker(_ picker: DateTimePicker, didSelectEndDate: Date)
 }
 
 @objc public class DateTimePicker: UIView {
@@ -78,6 +79,13 @@ public protocol DateTimePickerDelegate {
         }
     }
     
+    public var selectedEndDate: Int = 0 {
+        didSet {
+            self.delegate?.dateTimePicker(self, didSelectEndDate: calculateEndDate())
+            resetDateTitle()
+        }
+    }
+    
     public var selectedDateString: String {
         get {
             let formatter = DateFormatter()
@@ -86,10 +94,25 @@ public protocol DateTimePickerDelegate {
         }
     }
     
+    public var selectedEndDateString: String {
+        get {
+            let formatter = DateFormatter()
+            formatter.dateFormat = self.dateFormat
+            return formatter.string(from: calculateEndDate())
+        }
+    }
+    
     /// custom date format to be displayed, default to HH:mm dd/MM/YYYY
     public var dateFormat = "HH:mm dd/MM/YYYY" {
         didSet {
             resetDateTitle()
+        }
+    }
+    
+    /// custom connect string, default to will arrive
+    public var secondDateTimeTitle = "end" {
+        didSet {
+            secondDateTimeLabel.text = secondDateTimeTitle
         }
     }
     
@@ -161,11 +184,84 @@ public protocol DateTimePickerDelegate {
     public var completionHandler: ((Date)->Void)?
     public var dismissHandler: (() -> Void)?
     public var delegate: DateTimePickerDelegate?
+    
+    internal var endDateOptions = ["same day",
+                                   "next day",
+                                   "in 1 hour",
+                                   "in 2 hours",
+                                   "in 3 hours",
+                                   "in 4 hours",
+                                   "in 5 hours",
+                                   "in 6 hours",
+                                   "in 7 hours",
+                                   "in 8 hours",
+                                   "in 9 hours",
+                                   "in 10 hours",
+                                   "in 11 hours",
+                                   "in 12 hours",
+                                   "in 13 hours",
+                                   "in 14 hours",
+                                   "in 15 hours",
+                                   "in 16 hours",
+                                   "in 17 hours",
+                                   "in 18 hours",
+                                   "in 19 hours",
+                                   "in 20 hours",
+                                   "in 21 hours",
+                                   "in 22 hours",
+                                   "in 23 hours",
+                                   "in 24 hours",
+                                   "in 2 days",
+                                   "in 3 days",
+                                   "in 4 days",
+                                   "in 5 days",
+                                   "in 6 days",
+                                   "in a week",
+                                   "in 2 weeks",
+                                   "in 3 weeks",
+                                   "in 4 weeks",]
+    
+    internal var endDateOptionMap = ["same day" : -1,
+                                     "next day" : 0,
+                                     "in 1 hour" : 1,
+                                     "in 2 hours" : 2,
+                                     "in 3 hours" : 3,
+                                     "in 4 hours" : 4,
+                                     "in 5 hours" : 5,
+                                     "in 6 hours" : 6,
+                                     "in 7 hours" : 7,
+                                     "in 8 hours" : 8,
+                                     "in 9 hours" : 9,
+                                     "in 10 hours" : 10,
+                                     "in 11 hours" : 11,
+                                     "in 12 hours" : 12,
+                                     "in 13 hours" : 13,
+                                     "in 14 hours" : 14,
+                                     "in 15 hours" : 15,
+                                     "in 16 hours" : 16,
+                                     "in 17 hours" : 17,
+                                     "in 18 hours" : 18,
+                                     "in 19 hours" : 19,
+                                     "in 20 hours" : 20,
+                                     "in 21 hours" : 21,
+                                     "in 22 hours" : 22,
+                                     "in 23 hours" : 23,
+                                     "in 24 hours" : 24,
+                                     "in 2 days" : 48,
+                                     "in 3 days" : 72,
+                                     "in 4 days" : 96,
+                                     "in 5 days" : 120,
+                                     "in 6 days" : 144,
+                                     "in a week" : 168,
+                                     "in 2 weeks" : 336,
+                                     "in 3 weeks" : 504,
+                                     "in 4 weeks" : 672]
 
     // private vars
     internal var hourTableView: UITableView!
     internal var minuteTableView: UITableView!
     internal var amPmTableView: UITableView!
+    internal var endDateTableView: UITableView!
     internal var dayCollectionView: UICollectionView!
     
     private var shadowView: UIView!
@@ -177,6 +273,7 @@ public protocol DateTimePickerDelegate {
     private var cancelButton: UIButton!
     private var colonLabel1: UILabel!
     private var colonLabel2: UILabel!
+    private var secondDateTimeLabel: UILabel!
     
     private var borderTopView: UIView!
     private var borderBottomView: UIView!
@@ -194,6 +291,21 @@ public protocol DateTimePickerDelegate {
         }
     }
     
+    public func calculateEndDate() -> Date {
+        var endDate: Date!
+        if selectedEndDate == 0 {
+            let cal = Calendar.current
+            endDate = Date(timeInterval: Double(24 * 3600 - 1), since: cal.startOfDay(for: selectedDate))
+        } else if selectedEndDate == 1 {
+            let cal = Calendar.current
+            endDate = Date(timeInterval: Double(48 * 3600 - 1), since: cal.startOfDay(for: selectedDate))
+        } else {
+            let nextHours = endDateOptionMap[endDateOptions[selectedEndDate]]
+            endDate = Date(timeInterval: Double(nextHours! * 3600), since: selectedDate)
+        }
+        
+        return endDate
+    }
     
     @objc open class func show(selected: Date? = nil, minimumDate: Date? = nil, maximumDate: Date? = nil, timeInterval: MinuteInterval = .default) -> DateTimePicker {
         let dateTimePicker = DateTimePicker()
@@ -230,8 +342,8 @@ public protocol DateTimePickerDelegate {
         shadowView = UIView(frame: CGRect.zero)
         shadowView.backgroundColor = backgroundViewColor ?? UIColor.black.withAlphaComponent(0.3)
         shadowView.alpha = 1
-        let shadowViewTap = UITapGestureRecognizer(target: self, action: #selector(DateTimePicker.dismissView(sender:)))
-        shadowView.addGestureRecognizer(shadowViewTap)
+//        let shadowViewTap = UITapGestureRecognizer(target: self, action: #selector(DateTimePicker.dismissView(sender:)))
+//        shadowView.addGestureRecognizer(shadowViewTap)
         addSubview(shadowView)
         
         shadowView.translatesAutoresizingMaskIntoConstraints = false
@@ -378,7 +490,7 @@ public protocol DateTimePickerDelegate {
         doneButton.setTitle(doneButtonTitle, for: .normal)
         doneButton.setTitleColor(.white, for: .normal)
         doneButton.backgroundColor = doneBackgroundColor ?? darkColor.withAlphaComponent(0.5)
-        doneButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 13)
+        doneButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: UIFont.buttonFontSize)
         doneButton.layer.cornerRadius = 3
         doneButton.layer.masksToBounds = true
         doneButton.addTarget(self, action: #selector(DateTimePicker.dismissView(sender:)), for: .touchUpInside)
@@ -405,8 +517,7 @@ public protocol DateTimePickerDelegate {
         hourTableView.translatesAutoresizingMaskIntoConstraints = false
         hourTableView.topAnchor.constraint(equalTo: borderBottomView.bottomAnchor, constant: 1).isActive = true
         hourTableView.bottomAnchor.constraint(equalTo: doneButton.topAnchor, constant: -8).isActive = true
-        let extraSpace: CGFloat = is12HourFormat ? -30 : 0
-        hourTableView.trailingAnchor.constraint(equalTo: contentView.centerXAnchor, constant: extraSpace).isActive = true
+        hourTableView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 0).isActive = true
         hourTableView.widthAnchor.constraint(equalToConstant: 60).isActive = true
         hourTableView.layoutIfNeeded()
         
@@ -423,7 +534,7 @@ public protocol DateTimePickerDelegate {
         minuteTableView.translatesAutoresizingMaskIntoConstraints = false
         minuteTableView.topAnchor.constraint(equalTo: borderBottomView.bottomAnchor, constant: 1).isActive = true
         minuteTableView.bottomAnchor.constraint(equalTo: doneButton.topAnchor, constant: -8).isActive = true
-        minuteTableView.leadingAnchor.constraint(equalTo: contentView.centerXAnchor, constant: extraSpace).isActive = true
+        minuteTableView.leadingAnchor.constraint(equalTo: hourTableView.trailingAnchor, constant: 0).isActive = true
         minuteTableView.widthAnchor.constraint(equalToConstant: 60).isActive = true
         
         minuteTableView.layoutIfNeeded()
@@ -446,11 +557,29 @@ public protocol DateTimePickerDelegate {
         amPmTableView.translatesAutoresizingMaskIntoConstraints = false
         amPmTableView.topAnchor.constraint(equalTo: borderBottomView.bottomAnchor, constant: 1).isActive = true
         amPmTableView.bottomAnchor.constraint(equalTo: doneButton.topAnchor, constant: -8).isActive = true
-        amPmTableView.leadingAnchor.constraint(equalTo: contentView.centerXAnchor, constant: -extraSpace).isActive = true
+        amPmTableView.leadingAnchor.constraint(equalTo: minuteTableView.trailingAnchor, constant: 0).isActive = true
         amPmTableView.widthAnchor.constraint(equalToConstant: 64).isActive = true
         
         amPmTableView.layoutIfNeeded()
         amPmTableView.contentInset = UIEdgeInsetsMake(amPmTableView.frame.height / 2, 0, amPmTableView.frame.height / 2, 0)
+        
+        endDateTableView = UITableView(frame: CGRect.zero, style: .plain)
+        endDateTableView.rowHeight = 36
+        endDateTableView.showsVerticalScrollIndicator = false
+        endDateTableView.separatorStyle = .none
+        endDateTableView.delegate = self
+        endDateTableView.dataSource = self
+        endDateTableView.isHidden = isDatePickerOnly
+        contentView.addSubview(endDateTableView)
+        
+        endDateTableView.translatesAutoresizingMaskIntoConstraints = false
+        endDateTableView.topAnchor.constraint(equalTo: borderBottomView.bottomAnchor, constant: 1).isActive = true
+        endDateTableView.bottomAnchor.constraint(equalTo: doneButton.topAnchor, constant: -8).isActive = true
+        endDateTableView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: 0).isActive = true
+        endDateTableView.widthAnchor.constraint(equalToConstant: 130).isActive = true
+        
+        endDateTableView.layoutIfNeeded()
+        endDateTableView.contentInset = UIEdgeInsetsMake(endDateTableView.frame.height / 2, 0, endDateTableView.frame.height / 2, 0)
         
         // colon
         colonLabel1 = UILabel(frame: CGRect.zero)
@@ -463,7 +592,7 @@ public protocol DateTimePickerDelegate {
         
         colonLabel1.translatesAutoresizingMaskIntoConstraints = false
         colonLabel1.centerYAnchor.constraint(equalTo: minuteTableView.centerYAnchor, constant: 0).isActive = true
-        colonLabel1.centerXAnchor.constraint(equalTo: contentView.centerXAnchor, constant: extraSpace).isActive = true
+        colonLabel1.leadingAnchor.constraint(equalTo: hourTableView.trailingAnchor, constant: 0).isActive = true
         
         colonLabel2 = UILabel(frame: CGRect.zero)
         colonLabel2.text = ":"
@@ -475,7 +604,19 @@ public protocol DateTimePickerDelegate {
 		
         colonLabel2.translatesAutoresizingMaskIntoConstraints = false
         colonLabel2.centerYAnchor.constraint(equalTo: colonLabel1.centerYAnchor).isActive = true
-        colonLabel2.centerXAnchor.constraint(equalTo: colonLabel1.centerXAnchor, constant: 57).isActive = true
+        colonLabel2.leadingAnchor.constraint(equalTo: minuteTableView.trailingAnchor, constant: 0).isActive = true
+        
+        secondDateTimeLabel = UILabel(frame: CGRect.zero)
+        secondDateTimeLabel.text = secondDateTimeTitle
+        secondDateTimeLabel.font = UIFont.boldSystemFont(ofSize: 18)
+        secondDateTimeLabel.textColor = highlightColor
+        secondDateTimeLabel.textAlignment = .center
+        secondDateTimeLabel.isHidden = isDatePickerOnly
+        contentView.addSubview(secondDateTimeLabel)
+        
+        secondDateTimeLabel.translatesAutoresizingMaskIntoConstraints = false
+        secondDateTimeLabel.centerYAnchor.constraint(equalTo: colonLabel1.centerYAnchor).isActive = true
+        secondDateTimeLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor, constant: (is12HourFormat ? 20 : 0)).isActive = true
         
         // time separators
         separatorTopView = UIView(frame: CGRect.zero)
@@ -484,10 +625,10 @@ public protocol DateTimePickerDelegate {
         contentView.addSubview(separatorTopView)
 		
         separatorTopView.translatesAutoresizingMaskIntoConstraints = false
-        separatorTopView.centerYAnchor.constraint(equalTo: borderBottomView.topAnchor, constant: 36).isActive = true
+        separatorTopView.centerYAnchor.constraint(equalTo: borderBottomView.topAnchor, constant: 40).isActive = true
         separatorTopView.heightAnchor.constraint(equalToConstant: 1).isActive = true
-        separatorTopView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor).isActive = true
-        separatorTopView.widthAnchor.constraint(equalToConstant: 90 - extraSpace * 2).isActive = true
+        separatorTopView.centerXAnchor.constraint(equalTo: secondDateTimeLabel.centerXAnchor).isActive = true
+        separatorTopView.widthAnchor.constraint(equalTo: secondDateTimeLabel.widthAnchor).isActive = true
 		
         separatorBottomView = UIView(frame: CGRect.zero)
         separatorBottomView.backgroundColor = darkColor.withAlphaComponent(0.2)
@@ -497,8 +638,8 @@ public protocol DateTimePickerDelegate {
         separatorBottomView.translatesAutoresizingMaskIntoConstraints = false
         separatorBottomView.centerYAnchor.constraint(equalTo: separatorTopView.topAnchor, constant: 36).isActive = true
         separatorBottomView.heightAnchor.constraint(equalToConstant: 1).isActive = true
-        separatorBottomView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor).isActive = true
-        separatorBottomView.widthAnchor.constraint(equalToConstant: 90 - extraSpace * 2).isActive = true
+        separatorBottomView.centerXAnchor.constraint(equalTo: secondDateTimeLabel.centerXAnchor).isActive = true
+        separatorBottomView.widthAnchor.constraint(equalTo: secondDateTimeLabel.widthAnchor).isActive = true
 		
         // fill date
         fillDates(fromDate: minimumDate, toDate: maximumDate)
@@ -517,6 +658,7 @@ public protocol DateTimePickerDelegate {
         contentView.isHidden = false
         
         resetTime()
+        endDateTableView.selectRow(at: IndexPath(row: 0, section: 0), animated: true, scrollPosition: .middle)
         
         // animate to show contentView
 		layoutIfNeeded()
@@ -574,7 +716,7 @@ public protocol DateTimePickerDelegate {
             return
         }
     
-        dateTitleLabel.text = selectedDateString
+        dateTitleLabel.text = "\(secondDateTimeTitle) before \(selectedEndDateString)"
     }
     
     func fillDates(fromDate: Date, toDate: Date) {
@@ -652,6 +794,8 @@ extension DateTimePicker: UITableViewDataSource, UITableViewDelegate {
             return (is12HourFormat ? 12 : 24) * 3
         } else if tableView == amPmTableView {
             return 2
+        } else if tableView == endDateTableView {
+            return endDateOptions.count
         }
         
         if timeInterval != .default {
@@ -678,7 +822,8 @@ extension DateTimePicker: UITableViewDataSource, UITableViewDelegate {
             } else {
                 cell.textLabel?.text = String(format: "%02i", indexPath.row * timeInterval.rawValue)
             }
-            
+        } else if tableView == endDateTableView{
+            cell.textLabel?.text = endDateOptions[indexPath.row]
         } else {
             if is12HourFormat {
                 cell.textLabel?.text = String(format: "%02i", (indexPath.row % 12) + 1)
@@ -715,14 +860,12 @@ extension DateTimePicker: UITableViewDataSource, UITableViewDelegate {
             } else {
                 components.hour = indexPath.row < 24 ? indexPath.row : (indexPath.row - 24)%24
             }
-            
         } else if tableView == minuteTableView {
             if timeInterval == .default {
                 components.minute = indexPath.row < 60 ? indexPath.row : (indexPath.row - 60)%60
             } else {
                 components.minute = indexPath.row * timeInterval.rawValue
             }
-            
         } else if tableView == amPmTableView {
             if let hour = components.hour,
                 indexPath.row == 0 && hour >= 12 {
@@ -731,6 +874,9 @@ extension DateTimePicker: UITableViewDataSource, UITableViewDelegate {
                 indexPath.row == 1 && hour < 12 {
                 components.hour = hour + 12
             }
+        } else if tableView == endDateTableView {
+            selectedEndDate = indexPath.row
+            return
         }
         
         if let selected = calendar.date(from: components) {
@@ -844,6 +990,8 @@ extension DateTimePicker: UICollectionViewDataSource, UICollectionViewDelegate {
                 }
                 if tableView == minuteTableView && timeInterval != .default {
                     selectedRow = min(max(firstVisibleRow, 0), self.tableView(tableView, numberOfRowsInSection: 0)-1)
+                } else if tableView == endDateTableView {
+                    selectedRow = firstVisibleRow
                 } else {
                     selectedRow = firstVisibleRow + 1
                 }
@@ -880,6 +1028,8 @@ extension DateTimePicker: UICollectionViewDataSource, UICollectionViewDelegate {
                 } else {
                     components.minute = selectedRow * timeInterval.rawValue
                 }
+            } else if tableView == endDateTableView {
+                selectedEndDate = selectedRow
             } else if tableView == amPmTableView {
                 if let hour = components.hour,
                     selectedRow == 0 && hour >= 12 {
@@ -890,7 +1040,7 @@ extension DateTimePicker: UICollectionViewDataSource, UICollectionViewDelegate {
                 }
             }
             
-            if let selected = calendar.date(from: components) {
+            if tableView != endDateTableView, let selected = calendar.date(from: components) {
                 if selected.compare(minimumDate) == .orderedAscending {
                     selectedDate = minimumDate
                     resetTime()
@@ -905,6 +1055,8 @@ extension DateTimePicker: UICollectionViewDataSource, UICollectionViewDelegate {
     func adjustedRowForInfiniteScrolling(tableView: UITableView, selectedRow: Int) -> Int {
         if tableView == minuteTableView &&
             timeInterval != .default {
+            return selectedRow
+        } else if tableView == endDateTableView {
             return selectedRow
         }
         
