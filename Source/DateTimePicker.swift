@@ -388,7 +388,7 @@ public protocol DateTimePickerDelegate {
         titleView.layoutMargins = UIEdgeInsetsMake(0, 20, 0, 20)
         
         dateTitleLabel = UILabel(frame: CGRect.zero)
-        dateTitleLabel.font = UIFont.systemFont(ofSize: 15)
+        dateTitleLabel.numberOfLines = 0
         dateTitleLabel.textColor = darkColor
         dateTitleLabel.textAlignment = .center
         resetDateTitle()
@@ -716,7 +716,10 @@ public protocol DateTimePickerDelegate {
             return
         }
     
-        dateTitleLabel.text = "\(secondDateTimeTitle) before \(selectedEndDateString)"
+        let normalAttributes = [NSAttributedStringKey.foregroundColor : UIColor.darkGray, NSAttributedStringKey.font: UIFont.systemFont(ofSize: UIFont.systemFontSize - 1)]
+        let attributedText = NSMutableAttributedString(string: "\(selectedDateString) \n", attributes: normalAttributes)
+        attributedText.append(NSAttributedString(string: "\(selectedEndDateString)", attributes: normalAttributes))
+        dateTitleLabel.attributedText = attributedText
     }
     
     func fillDates(fromDate: Date, toDate: Date) {
